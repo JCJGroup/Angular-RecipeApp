@@ -1,8 +1,10 @@
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { NgForm } from '@angular/forms';
-import { Component } from "@angular/core";
+import { Component, ComponentFactoryResolver, ViewChild } from "@angular/core";
 import { AuthResponseData, AuthService } from './auth.service';
 import { Router } from '@angular/router';
+import { AlertComponent } from '../shared/alert/alert.component';
+import { PlaceholderDirective } from '../shared/placeholder/placeholder.directive';
 
 
 
@@ -15,8 +17,9 @@ export class AuthComponent {
     isLoginMode = true;
     isLoading = false;
     error: string = null;
-
-    constructor(private authService: AuthService, private router:Router) { }
+    private closeSub:Subscription
+    @ViewChild(PlaceholderDirective, { static: false }) alertHost: PlaceholderDirective;
+    constructor(private authService: AuthService, private router: Router, private componentFactoryResolver: ComponentFactoryResolver) { }
     onSwitch() {
         this.isLoginMode = !this.isLoginMode
     }
@@ -48,11 +51,31 @@ export class AuthComponent {
         }, errorMessage => {
             this.isLoading = false;
             this.error = errorMessage
+            this.showErrorAlert(errorMessage);
             console.log(errorMessage);
             // this.error='An Error Occured!'
 
         });
 
         form.reset();
+    }
+
+    onhandleError() {
+        this.error = null;
+    }
+
+    private showErrorAlert(message: string) {
+        const alertCmpFactory = this.componentFactoryResolver.resolveComponentFactory(AlertComponent);
+        const hostViewContainerRef = this.alertHost.viewContainerRef;
+        hostViewContainerRef.clear();
+
+        const componentRef =  hostViewContainerRef.createComponent(alertCmpFactory);
+        componentRef.instance.message = message;
+        this.closeSub =  componentRef.instance.close.subscribe(() => {
+            this.closeSub.unsubscribe();
+            hostViewContainerRef.clear();
+            // this.onhandleError();
+        });
+
     }
 }
